@@ -98,7 +98,14 @@ function pickVoice(){ const vs=(synth?synth.getVoices():[]).filter(v=>/^en/i.tes
   const sc=v=>{const n=v.name.toLowerCase();let s=0;if(/natural|neural|enhanced|premium|online/.test(n))s+=6;if(/google/.test(n))s+=4;if(v.localService===false)s+=2;if(/en[-_]us/i.test(v.lang))s+=2;return s};
   voice=vs.sort((a,b)=>sc(b)-sc(a))[0]||null; }
 if(synth){ pickVoice(); synth.onvoiceschanged=pickVoice; }
-function speak(text,rate,cb){ if(!synth){cb&&cb();return;} synth.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="en-US"; u.rate=rate||0.95; if(voice) u.voice=voice; u.onend=()=>cb&&cb(); u.onerror=()=>cb&&cb(); synth.speak(u); }
+let unlocked=false;
+function needTap(){ const st=$("st"); if(!st) return; stopListen(); st.innerHTML=`<button class="primary" id="tapgo" style="font-size:17px;padding:12px 22px">▶ 눌러서 시작</button>`; $("tapgo").onclick=()=>{unlocked=true;listenAfterSpeak();}; }
+function speak(text,rate,cb){ if(!synth){cb&&cb();return;} synth.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="en-US"; u.rate=rate||0.95; if(voice) u.voice=voice;
+  let started=false, done=false; const fin=()=>{ if(done) return; done=true; cb&&cb(); };
+  u.onstart=()=>{started=true;unlocked=true;}; u.onend=fin;
+  u.onerror=e=>{ if(!unlocked && e && e.error==="not-allowed"){ done=true; needTap(); } else fin(); };
+  synth.speak(u);
+  if(!unlocked) setTimeout(()=>{ if(!started && !done && !synth.speaking){ done=true; synth.cancel(); needTap(); } },1500); }
 function norm(s){return String(s).toLowerCase().replace(/[’‘]/g,"'").replace(/[^a-z0-9' ]+/g," ").replace(/\s+/g," ").trim();}
 function lcs(t,g){const n=t.length,m=g.length,dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
   for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)dp[i][j]=t[i]===g[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
@@ -196,5 +203,5 @@ function renderSummary(){ clearAdv(); $("app").classList.remove("cm"); $("app").
   if($("re")) $("re").onclick=()=>{retry=null;openCard(0);};
   $("home").onclick=renderStart; setVH();
 }
-renderStart();
+if(location.hash.length>2 && SR){ retry=null; openCard(0); } else renderStart();
 </script></body></html>
