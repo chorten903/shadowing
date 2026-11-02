@@ -48,6 +48,23 @@ button:disabled{opacity:.45}
 .li b{font-family:var(--display);font-size:22px;min-width:2.2em;text-align:center}
 .back{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px;border-radius:14px;background:var(--fg);color:var(--card);text-decoration:none;font-weight:700;font-size:16px}
 .back small{font-weight:400;font-size:12px;opacity:.8}
+.wrap.cm{height:100vh;height:100dvh;gap:10px;padding-bottom:max(12px,env(safe-area-inset-bottom));overflow:hidden}
+.cm .card{padding:clamp(14px,2.6vh,26px) 16px;gap:clamp(6px,1.2vh,12px);flex:none}
+.cm .en{font-size:clamp(21px,3.9vh,30px)}
+.cm .ko{font-size:clamp(14px,2vh,16px);line-height:1.4}
+.cm .tip{padding:6px 10px;line-height:1.4}
+.cm .row button{padding:7px 14px;font-size:14px}
+.stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.cm .mic{width:clamp(68px,11vh,104px);height:clamp(68px,11vh,104px);font-size:clamp(28px,4.4vh,42px);flex:none}
+.cm .res{flex-direction:row;align-items:center;gap:14px;padding:10px 14px;width:100%;text-align:left}
+.cm .res .num{font-size:clamp(38px,6vh,52px);flex:none}
+.cm .res .txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.cm .res .row{justify-content:flex-start}
+.cnt{height:4px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:4px}
+.cnt i{display:block;height:100%;background:var(--accent);width:0;animation:fill 3s linear forwards}
+@keyframes fill{to{width:100%}}
+.cm .nav{margin-top:0;flex:none}
+.cm .nav button{padding:11px 6px}
 .warn{background:var(--bad-soft);border-radius:12px;padding:12px;font-size:14px}
 </style></head><body>
 <div class="wrap" id="app"></div>
@@ -80,7 +97,7 @@ function verdict(p){return p>=90?"😎 똑같아요":p>=70?"🙂 비슷해요":"
 function order(){return retry||S.map((_,i)=>i);}
 function isLast(){const o=order();return o.indexOf(idx)===o.length-1;}
 
-function renderStart(){
+function renderStart(){ $("app").classList.remove("cm");
   $("app").innerHTML=`<div class="top"><span class="brand">Max &amp; Dana 쉐도잉</span><span>${esc(SET.ep?("EBS "+SET.ep):"")}</span></div>
   <div class="card"><div style="font-size:40px">🎤</div><div class="en" style="font-size:24px">${esc(SET.title||"오늘의 쉐도잉")}</div><div class="ko">${S.length}문장 · 듣고 → 바로 따라 말하면 자동 채점</div></div>
   ${SR?"":`<div class="warn">이 브라우저는 음성 인식을 지원하지 않아요. 크롬(Chrome)으로 열어 주세요.</div>`}
@@ -88,24 +105,26 @@ function renderStart(){
   <div class="nav" style="grid-template-columns:1fr"><button class="primary" id="go" style="font-size:18px;padding:16px" ${SR?"":"disabled"}>▶ 쉐도잉 시작</button></div>`;
   $("go").onclick=()=>{retry=null;openCard(0);};
 }
+let advT=null;
+function clearAdv(){ clearTimeout(advT); advT=null; }
 function openCard(i){
-  clearInterval(backT); stopListen(); idx=i; const s=S[i], o=order(), k=o.indexOf(i);
+  clearInterval(backT); clearAdv(); stopListen(); idx=i; $("app").classList.add("cm"); const s=S[i], o=order(), k=o.indexOf(i);
   $("app").innerHTML=`<div class="top"><span class="brand">쉐도잉 ${k+1} / ${o.length}</span><button id="x" style="padding:6px 12px">✕</button></div>
   <div class="card"><div class="en" id="en">${esc(s.en)}</div><div class="ko">${esc(s.ko)}</div>${s.tip?`<div class="tip">${esc(s.tip)}</div>`:""}
     <div class="row"><button id="again">↻ 듣고 다시 말하기</button><button id="slow">🐢 천천히</button></div></div>
-  <button class="mic" id="mic" aria-label="말하기">🎤</button>
-  <div class="status" id="st">문장을 들려줄게요…</div><div class="live" id="live"></div><div id="res"></div>
+  <div class="stage"><button class="mic" id="mic" aria-label="말하기">🎤</button>
+  <div class="status" id="st">문장을 들려줄게요…</div><div class="live" id="live"></div><div id="res" style="width:100%"></div></div>
   <div class="nav"><button id="prev" ${k<=0?"disabled":""}>◀ 이전</button><button id="next">${isLast()?"완료 ✓":"다음 ▶"}</button></div>`;
   $("x").onclick=()=>{stopListen();renderSummary();};
   $("again").onclick=()=>listenAfterSpeak();
   $("slow").onclick=()=>{stopListen();speak(s.en,0.65);};
-  $("mic").onclick=()=>listening?stopListen():startListen();
+  $("mic").onclick=()=>{ if(listening) stopListen(); else { clearAdv(); $("res").innerHTML=""; ["st","live"].forEach(k=>$(k).style.display=""); startListen(); } };
   $("prev").onclick=()=>{const o=order(),k=o.indexOf(idx);if(k>0)openCard(o[k-1]);};
   $("next").onclick=goNext;
   listenAfterSpeak();
 }
 function goNext(){const o=order(),k=o.indexOf(idx);if(k<o.length-1)openCard(o[k+1]);else{retry=null;renderSummary();}}
-function listenAfterSpeak(){ stopListen(); $("st").textContent="🔊 잘 들어 보세요"; $("live").textContent=""; $("res").innerHTML=""; $("en").innerHTML=esc(S[idx].en);
+function listenAfterSpeak(){ clearAdv(); stopListen(); ["st","live","mic"].forEach(k=>$(k).style.display=""); $("st").textContent="🔊 잘 들어 보세요"; $("live").textContent=""; $("res").innerHTML=""; $("en").innerHTML=esc(S[idx].en);
   const my=idx; speak(S[idx].en,0.95,()=>{ if(idx===my) startListen(); }); }
 function startListen(){
   if(!SR) return; if(synth) synth.cancel();
@@ -126,18 +145,19 @@ function score(text,alts){
   const pct=Math.round(bestN/t.length*100), words=target.split(/\s+/);
   if(words.length===t.length) $("en").innerHTML=words.map((w,k)=>`<span class="${bestHit[k]?"hit":"miss"}">${esc(w)}</span>`).join(" ");
   const before=best[idx]; if(before!=null && pct>before && gain[idx]==null) gain[idx]=before; best[idx]=before==null?pct:Math.max(before,pct);
-  $("st").textContent=""; $("live").textContent="";
-  $("res").innerHTML=`<div class="res ${pct>=70?"ok":"bad"}"><div class="num ${cls(pct)}">${pct}</div><div class="verdict">${verdict(pct)}</div>
-    <div class="small">들린 대로: "${esc(bestTxt)}"</div>${before!=null?(pct>before?`<div class="small" style="color:var(--ok)">최고 점수 갱신! ${before} → ${pct} 🎉</div>`:`<div class="small">최고 점수 ${before}점은 그대로 남아요</div>`):""}
-    ${pct<70?`<div class="row"><button id="retry1" class="primary">↻ 다시 해 볼게요</button></div>`:""}</div>`;
-  if($("retry1")) $("retry1").onclick=listenAfterSpeak;
-  if(pct>=70 || isLast()){ const my=idx; setTimeout(()=>{ if(idx===my && !listening && $("res") && $("res").innerHTML) goNext(); }, pct>=70?2500:4000); }
+  $("st").style.display="none"; $("live").style.display="none"; $("mic").style.display="none";
+  $("res").innerHTML=`<div class="res ${pct>=70?"ok":"bad"}"><div class="num ${cls(pct)}">${pct}</div><div class="txt"><div class="verdict">${verdict(pct)}</div>
+    <div class="small">들린 대로: "${esc(bestTxt)}"</div>${before!=null?(pct>before?`<div class="small" style="color:var(--ok)">최고 점수 갱신! ${before} → ${pct} 🎉</div>`:`<div class="small">최고 ${before}점은 그대로</div>`):""}
+    <div class="row"><button id="retry1" class="${pct<70?"primary":""}">↻ 다시</button></div>
+    <div class="small">3초 뒤 ${isLast()?"결과로":"다음 문장으로"} 넘어가요</div><div class="cnt"><i></i></div></div></div>`;
+  $("retry1").onclick=listenAfterSpeak;
+  clearAdv(); const my=idx; advT=setTimeout(()=>{ if(idx===my && !listening) goNext(); }, 3000);
 }
 const APP_URL="https://claude.ai/artifact/81i7VdtutQ1RFNG7ErNrKf";
 let backT=null;
 function cancelBack(e){ if(e && e.target && e.target.closest && e.target.closest("#back")) return; clearInterval(backT); const el=$("cd"); if(el) el.textContent="눌러서 돌아가기"; }
 function goBack(){ try{ window.close(); }catch(e){} setTimeout(()=>{ location.href=APP_URL; },300); }
-function renderSummary(){
+function renderSummary(){ clearAdv(); $("app").classList.remove("cm");
   stopListen(); const done=S.map((_,i)=>i).filter(i=>best[i]!=null);
   const avg=done.length?Math.round(done.reduce((a,i)=>a+best[i],0)/done.length):0;
   const rt=S.map((_,i)=>i).filter(i=>best[i]==null||best[i]<80); const col=avg>=90?"var(--ok)":avg>=70?"var(--accent)":"var(--bad)";
