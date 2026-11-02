@@ -46,6 +46,8 @@ button:disabled{opacity:.45}
 .li:first-child{border-top:0}
 .li .s{font-family:var(--display);font-size:15px;text-align:left}
 .li b{font-family:var(--display);font-size:22px;min-width:2.2em;text-align:center}
+.back{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px;border-radius:14px;background:var(--fg);color:var(--card);text-decoration:none;font-weight:700;font-size:16px}
+.back small{font-weight:400;font-size:12px;opacity:.8}
 .warn{background:var(--bad-soft);border-radius:12px;padding:12px;font-size:14px}
 </style></head><body>
 <div class="wrap" id="app"></div>
@@ -87,7 +89,7 @@ function renderStart(){
   $("go").onclick=()=>{retry=null;openCard(0);};
 }
 function openCard(i){
-  stopListen(); idx=i; const s=S[i], o=order(), k=o.indexOf(i);
+  clearInterval(backT); stopListen(); idx=i; const s=S[i], o=order(), k=o.indexOf(i);
   $("app").innerHTML=`<div class="top"><span class="brand">쉐도잉 ${k+1} / ${o.length}</span><button id="x" style="padding:6px 12px">✕</button></div>
   <div class="card"><div class="en" id="en">${esc(s.en)}</div><div class="ko">${esc(s.ko)}</div>${s.tip?`<div class="tip">${esc(s.tip)}</div>`:""}
     <div class="row"><button id="again">↻ 듣고 다시 말하기</button><button id="slow">🐢 천천히</button></div></div>
@@ -131,6 +133,10 @@ function score(text,alts){
   if($("retry1")) $("retry1").onclick=listenAfterSpeak;
   if(pct>=70 || isLast()){ const my=idx; setTimeout(()=>{ if(idx===my && !listening && $("res") && $("res").innerHTML) goNext(); }, pct>=70?2500:4000); }
 }
+const APP_URL="https://claude.ai/artifact/81i7VdtutQ1RFNG7ErNrKf";
+let backT=null;
+function cancelBack(e){ if(e && e.target && e.target.closest && e.target.closest("#back")) return; clearInterval(backT); const el=$("cd"); if(el) el.textContent="눌러서 돌아가기"; }
+function goBack(){ try{ window.close(); }catch(e){} setTimeout(()=>{ location.href=APP_URL; },300); }
 function renderSummary(){
   stopListen(); const done=S.map((_,i)=>i).filter(i=>best[i]!=null);
   const avg=done.length?Math.round(done.reduce((a,i)=>a+best[i],0)/done.length):0;
@@ -141,7 +147,11 @@ function renderSummary(){
   <div class="small" style="text-align:center"><b>${done.length} / ${S.length}</b>문장 · 평균 <b>${avg}점</b></div>
   <div class="list">${S.map((s,i)=>`<div class="li"><b class="${best[i]==null?"":cls(best[i])}">${best[i]??"-"}</b><span class="s">${esc(s.en)}${gain[i]!=null?`<br><span class="small" style="color:var(--ok)">${gain[i]} → ${best[i]} ↑</span>`:""}</span>${(best[i]==null||best[i]<80)?`<button data-i="${i}">다시</button>`:"👍"}</div>`).join("")}</div>
   <div class="small" style="text-align:center">${rt.length?`재도전 추천: 80점 미만이거나 안 한 문장 ${rt.length}개`:"모든 문장 80점 이상! 완벽해요"}</div>
-  <div class="nav">${rt.length?`<button class="primary" id="ra">추천 문장 다시 하기</button>`:`<button id="re">처음부터 다시</button>`}<button id="home">처음 화면</button></div>`;
+  <div class="nav">${rt.length?`<button class="primary" id="ra">추천 문장 다시 하기</button>`:`<button id="re">처음부터 다시</button>`}<button id="home">처음 화면</button></div>
+  <a class="back" id="back" href="${APP_URL}">↩ 웹앱으로 돌아가기 <small id="cd">5초 뒤 자동 이동 · 화면을 누르면 취소</small></a>`;
+  clearInterval(backT); let c=5; backT=setInterval(()=>{ c--; const el=$("cd"); if(!el){clearInterval(backT);return;} if(c<=0){ clearInterval(backT); goBack(); } else el.textContent=c+"초 뒤 자동 이동 · 화면을 누르면 취소"; },1000);
+  setTimeout(()=>document.addEventListener("pointerdown",cancelBack,{once:true}),300);
+  $("back").onclick=e=>{ e.preventDefault(); clearInterval(backT); goBack(); };
   document.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{retry=[+b.dataset.i];openCard(+b.dataset.i);});
   if($("ra")) $("ra").onclick=()=>{retry=rt;openCard(rt[0]);};
   if($("re")) $("re").onclick=()=>{retry=null;openCard(0);};
