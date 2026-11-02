@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Max & Dana 쉐도잉</title>
+<meta name="theme-color" content="#4A9BE8">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root{--bg:#f3f6f8;--card:#fff;--fg:#1b2a33;--muted:#5f7380;--line:#d9e2e7;--accent:#1f6f8b;--accent-soft:#e2f0f5;--sun:#e8a23a;--ok:#2f8a5b;--bad:#c2453a;--ok-soft:#e1f3e8;--bad-soft:#fbe6e3;
+--display:"Young Serif",Georgia,serif;--body:"Noto Sans KR",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#10181d;--card:#18232a;--fg:#e4ecf0;--muted:#94a7b2;--line:#2a3943;--accent:#6cc0dc;--accent-soft:#1c3440;--sun:#f0b65a;--ok:#5fc48d;--bad:#ef7d72;--ok-soft:#1b3326;--bad-soft:#3a2321;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.6}
+.wrap{max-width:560px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(30px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:16px;min-height:100vh}
+.top{display:flex;justify-content:space-between;align-items:baseline}
+.brand{font-family:var(--display);font-size:18px}
+.top span{font-size:13px;color:var(--muted)}
+button{font:inherit;cursor:pointer;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:9px 16px;font-size:15px}
+button:disabled{opacity:.45}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 20px;display:flex;flex-direction:column;gap:12px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.06)}
+.en{font-family:var(--display);font-size:30px;line-height:1.3;text-wrap:balance}
+.en .miss{color:var(--bad);text-decoration:underline;text-decoration-thickness:3px}
+.en .hit{color:var(--ok)}
+.ko{font-size:16px;color:var(--muted)}
+.tip{font-size:13px;color:var(--accent);background:var(--accent-soft);border-radius:10px;padding:8px 10px}
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.mic{width:110px;height:110px;border-radius:50%;border:0;background:var(--bad);color:#fff;font-size:44px;display:grid;place-items:center;margin:0 auto;box-shadow:0 10px 24px rgba(194,69,58,.35)}
+.mic.on{animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(194,69,58,.55)}70%{box-shadow:0 0 0 26px rgba(194,69,58,0)}100%{box-shadow:0 0 0 0 rgba(194,69,58,0)}}
+.status{text-align:center;font-size:14px;color:var(--muted);min-height:1.6em}
+.live{text-align:center;font-family:var(--display);font-size:20px;min-height:1.4em;color:var(--accent)}
+.res{border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px;text-align:center}
+.res.ok{background:var(--ok-soft)}.res.bad{background:var(--bad-soft)}
+.num{font-family:var(--display);font-size:56px;line-height:1}
+.n3{color:var(--ok)}.n2{color:var(--accent)}.n1{color:var(--bad)}
+.verdict{font-weight:800;font-size:16px}
+.small{font-size:13px;color:var(--muted)}
+.nav{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto}
+.nav button{border-radius:12px;padding:13px 6px}
+.primary{background:var(--accent);color:var(--card);border-color:var(--accent);font-weight:700}
+.ring{width:140px;height:140px;border-radius:50%;display:grid;place-items:center;margin:0 auto}
+.ring span{width:112px;height:112px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-family:var(--display);font-size:38px}
+.list{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 12px}
+.li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.li:first-child{border-top:0}
+.li .s{font-family:var(--display);font-size:15px;text-align:left}
+.li b{font-family:var(--display);font-size:22px;min-width:2.2em;text-align:center}
+.warn{background:var(--bad-soft);border-radius:12px;padding:12px;font-size:14px}
+</style></head><body>
+<div class="wrap" id="app"></div>
+<script>
+const LESSONS = {"2026-11-02": {"title": "Hands Off Your Eyes", "ep": "1회차", "s": [{"en": "I think there's something in my eye.", "ko": "눈에 뭐가 들어간 것 같아요.", "tip": "I think there's ~ in ... = ...에 ~가 있는 것 같아"}, {"en": "You can't see germs, honey. That's not good for you.", "ko": "세균은 눈에 안 보여, 얘야. 그건 너한테 안 좋아.", "tip": "That's not good for you = 그건 너한테 안 좋아"}, {"en": "Hands off! Don't rub it.", "ko": "손 떼! 비비지 마.", "tip": "Hands off! = 손 떼! (만지지 마)"}]}, "2026-11-03": {"title": "Tiny Soldiers Inside", "ep": "2회차", "s": [{"en": "Thanks to our immune system.", "ko": "면역 체계 덕분이야.", "tip": "Thanks to ~ = ~ 덕분에"}, {"en": "Wow. I didn't know that could happen.", "ko": "와. 그런 일이 있는 줄 몰랐어요.", "tip": "I didn't know that could happen = 그런 일이 있는 줄 몰랐어"}, {"en": "Then how come I don't get sick all the time?", "ko": "그럼 왜 저는 맨날 아프지 않아요?", "tip": "How come ~? = 어째서 ~해? (Why보다 구어적)"}]}, "2026-11-04": {"title": "A Favor for My Cousin", "ep": "3회차", "s": [{"en": "I'm not sure if I can be of help.", "ko": "내가 도움이 될 수 있을지 모르겠어.", "tip": "I'm not sure if ~ = ~인지 잘 모르겠어 / be of help = 도움이 되다"}, {"en": "Okay. I'd be happy to help.", "ko": "알았어. 기꺼이 도와줄게.", "tip": "I'd be happy to help = 기꺼이 도와줄게"}, {"en": "My cousin wants to go freelance. Could you talk to him?", "ko": "내 사촌이 프리랜서로 일하고 싶어 해. 얘기 좀 해 줄래?", "tip": "go freelance = 프리랜서로 일하다"}]}, "2026-11-05": {"title": "Meeting Matt", "ep": "4회차", "s": [{"en": "Excuse me. Are you the person I'm supposed to meet?", "ko": "실례합니다. 제가 만나기로 한 분이세요?", "tip": "Are you the person I'm supposed to meet? = 제가 만나기로 한 분이세요?"}, {"en": "I recognize you from your picture.", "ko": "사진 보고 알아봤어요.", "tip": "I recognize ~ from ... = ...보고 ~를 알아보다"}, {"en": "Thanks for meeting me. I could use some advice.", "ko": "만나 주셔서 고마워요. 조언이 좀 필요해서요.", "tip": "I could use ~ = ~가 있으면 좋겠어요, ~가 필요해요"}]}, "2026-11-06": {"title": "The Final Goal", "ep": "5회차", "s": [{"en": "Can I ask you what your ultimate goal is?", "ko": "최종 목표가 뭔지 물어봐도 될까요?", "tip": "Can I ask you what ~ is? = ~가 뭔지 물어봐도 될까요? / ultimate = 최종의"}, {"en": "Exactly. Nothing would make me happier.", "ko": "맞아요. 그보다 행복한 일은 없을 거예요.", "tip": "Nothing would make me happier = 그보다 행복한 일은 없을 거예요"}, {"en": "Don't tell Eddy, okay? I want to start my own company someday.", "ko": "에디한테는 말하지 마요. 언젠가 제 회사를 차리고 싶어요.", "tip": "start a company = 회사를 차리다"}]}, "2026-11-09": {"title": "The Right Choice", "ep": "6회차", "s": [{"en": "Thanks. That makes me feel confident about my decision.", "ko": "고마워요. 그 말 들으니 제 결정에 자신감이 생겨요.", "tip": "That makes me feel ~ = 그 말 들으니 ~한 기분이에요"}, {"en": "I think I made the right choice.", "ko": "옳은 선택을 한 것 같아요.", "tip": "I think I made the right choice = 옳은 선택을 한 것 같아요"}, {"en": "Yep. I feel free, but kind of nervous.", "ko": "네. 홀가분한데 좀 불안하기도 해요.", "tip": "kind of = 좀, 약간"}]}, "2026-11-10": {"title": "Parents' Day", "ep": "7회차", "s": [{"en": "But now I know how precious it is to spend time with them.", "ko": "하지만 이제는 함께 시간을 보내는 게 얼마나 소중한지 알아.", "tip": "I know how precious it is to ~ = ~하는 게 얼마나 소중한지 알아"}, {"en": "I want to spend some quality time with them.", "ko": "부모님과 소중한 시간을 보내고 싶어.", "tip": "spend quality time with ~ = ~와 소중한 시간을 보내다"}, {"en": "Yeah. I used to just call them.", "ko": "응. 예전엔 전화만 했었어.", "tip": "used to ~ = 예전엔 ~하곤 했다"}]}, "2026-11-11": {"title": "A Visit Home", "ep": "8회차", "s": [{"en": "How was your visit to your parents' house?", "ko": "부모님 댁 다녀온 건 어땠어?", "tip": "How was your visit to ~? = ~에 다녀온 건 어땠어?"}, {"en": "Right. They mean so much to me.", "ko": "맞아. 나한테 정말 소중한 분들이야.", "tip": "They mean so much to me = 나한테 정말 소중한 분들이야"}, {"en": "Yeah. I'm so grateful for everything they've done.", "ko": "응. 부모님이 해 주신 모든 게 너무 감사해.", "tip": "grateful for ~ = ~에 감사하는"}]}, "2026-11-12": {"title": "A Cracked Jar", "ep": "9회차", "s": [{"en": "I'll put you through to customer service.", "ko": "고객 서비스 부서로 연결해 드릴게요.", "tip": "I'll put you through to ~ = ~로 연결해 드릴게요"}, {"en": "Hi. My order came today, but there's something wrong with this product.", "ko": "안녕하세요. 주문한 게 오늘 왔는데, 이 제품에 문제가 있어요.", "tip": "There's something wrong with ~ = ~에 문제가 있어요"}, {"en": "Oh no. What seems to be the problem?", "ko": "저런. 어떤 문제인가요?", "tip": "What seems to be the problem? = 어떤 문제가 있으신가요? (상담원 단골 표현)"}]}, "2026-11-13": {"title": "Refund or Exchange", "ep": "10회차", "s": [{"en": "Would you like a refund or an exchange?", "ko": "환불해 드릴까요, 교환해 드릴까요?", "tip": "Would you like a ~ or a ...? = ~로 하시겠어요, ...로 하시겠어요?"}, {"en": "No problem. We'll get that to you right away.", "ko": "알겠습니다. 바로 보내 드릴게요.", "tip": "We'll get that to you right away = 바로 보내 드릴게요"}, {"en": "Yes, please. We'll email you a return label.", "ko": "네, 그렇게 해 주세요. 반품 라벨을 이메일로 보내 드릴게요.", "tip": "return label = 반품 라벨 (미국 온라인 쇼핑 필수 단어)"}]}};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const todayKST=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+function loadSet(){
+  try{ if(location.hash.length>2){ const d=JSON.parse(decodeURIComponent(location.hash.slice(1))); if(d && Array.isArray(d.s) && d.s.length) return d; } }catch(e){}
+  const keys=Object.keys(LESSONS).sort(); const t=todayKST();
+  const k=[...keys].reverse().find(x=>x<=t)||keys[0]; return LESSONS[k];
+}
+const SET=loadSet(), S=SET.s;
+const best={}, gain={}; let idx=0, retry=null, rec=null, listening=false;
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const synth=window.speechSynthesis;
+let voice=null;
+function pickVoice(){ const vs=(synth?synth.getVoices():[]).filter(v=>/^en/i.test(v.lang));
+  const sc=v=>{const n=v.name.toLowerCase();let s=0;if(/natural|neural|enhanced|premium|online/.test(n))s+=6;if(/google/.test(n))s+=4;if(v.localService===false)s+=2;if(/en[-_]us/i.test(v.lang))s+=2;return s};
+  voice=vs.sort((a,b)=>sc(b)-sc(a))[0]||null; }
+if(synth){ pickVoice(); synth.onvoiceschanged=pickVoice; }
+function speak(text,rate,cb){ if(!synth){cb&&cb();return;} synth.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="en-US"; u.rate=rate||0.95; if(voice) u.voice=voice; u.onend=()=>cb&&cb(); u.onerror=()=>cb&&cb(); synth.speak(u); }
+function norm(s){return String(s).toLowerCase().replace(/[’‘]/g,"'").replace(/[^a-z0-9' ]+/g," ").replace(/\s+/g," ").trim();}
+function lcs(t,g){const n=t.length,m=g.length,dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+  for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)dp[i][j]=t[i]===g[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
+  const hit=new Array(n).fill(false);let i=0,j=0;while(i<n&&j<m){if(t[i]===g[j]){hit[i]=true;i++;j++;}else if(dp[i+1][j]>=dp[i][j+1])i++;else j++;}return hit;}
+function cls(p){return p>=90?"n3":p>=70?"n2":"n1";}
+function verdict(p){return p>=90?"😎 똑같아요":p>=70?"🙂 비슷해요":"😅 다시 해 볼까요";}
+function order(){return retry||S.map((_,i)=>i);}
+function isLast(){const o=order();return o.indexOf(idx)===o.length-1;}
+
+function renderStart(){
+  $("app").innerHTML=`<div class="top"><span class="brand">Max &amp; Dana 쉐도잉</span><span>${esc(SET.ep?("EBS "+SET.ep):"")}</span></div>
+  <div class="card"><div style="font-size:40px">🎤</div><div class="en" style="font-size:24px">${esc(SET.title||"오늘의 쉐도잉")}</div><div class="ko">${S.length}문장 · 듣고 → 바로 따라 말하면 자동 채점</div></div>
+  ${SR?"":`<div class="warn">이 브라우저는 음성 인식을 지원하지 않아요. 크롬(Chrome)으로 열어 주세요.</div>`}
+  <div class="small" style="text-align:center">처음에 '마이크 사용 허용'을 물으면 <b>허용</b>을 눌러 주세요. 녹음은 저장되지 않아요.</div>
+  <div class="nav" style="grid-template-columns:1fr"><button class="primary" id="go" ${SR?"":"disabled"}>▶ 쉐도잉 시작</button></div>`;
+  $("go").onclick=()=>{retry=null;openCard(0);};
+}
+function openCard(i){
+  stopListen(); idx=i; const s=S[i], o=order(), k=o.indexOf(i);
+  $("app").innerHTML=`<div class="top"><span class="brand">쉐도잉 ${k+1} / ${o.length}</span><button id="x" style="padding:6px 12px">✕</button></div>
+  <div class="card"><div class="en" id="en">${esc(s.en)}</div><div class="ko">${esc(s.ko)}</div>${s.tip?`<div class="tip">${esc(s.tip)}</div>`:""}
+    <div class="row"><button id="again">↻ 듣고 다시 말하기</button><button id="slow">🐢 천천히</button></div></div>
+  <button class="mic" id="mic" aria-label="말하기">🎤</button>
+  <div class="status" id="st">문장을 들려줄게요…</div><div class="live" id="live"></div><div id="res"></div>
+  <div class="nav"><button id="prev" ${k<=0?"disabled":""}>◀ 이전</button><button id="next">${isLast()?"완료 ✓":"다음 ▶"}</button></div>`;
+  $("x").onclick=()=>{stopListen();renderSummary();};
+  $("again").onclick=()=>listenAfterSpeak();
+  $("slow").onclick=()=>{stopListen();speak(s.en,0.65);};
+  $("mic").onclick=()=>listening?stopListen():startListen();
+  $("prev").onclick=()=>{const o=order(),k=o.indexOf(idx);if(k>0)openCard(o[k-1]);};
+  $("next").onclick=goNext;
+  listenAfterSpeak();
+}
+function goNext(){const o=order(),k=o.indexOf(idx);if(k<o.length-1)openCard(o[k+1]);else{retry=null;renderSummary();}}
+function listenAfterSpeak(){ stopListen(); $("st").textContent="🔊 잘 들어 보세요"; $("live").textContent=""; $("res").innerHTML=""; $("en").innerHTML=esc(S[idx].en);
+  const my=idx; speak(S[idx].en,0.95,()=>{ if(idx===my) startListen(); }); }
+function startListen(){
+  if(!SR) return; if(synth) synth.cancel();
+  rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=false; rec.maxAlternatives=3;
+  let finalText="", alts=[], got=false;
+  rec.onstart=()=>{listening=true;$("mic").classList.add("on");$("mic").textContent="⏹";$("st").textContent="🎙 지금 말하세요";};
+  rec.onresult=e=>{ let interim="";for(let r=e.resultIndex;r<e.results.length;r++){const res=e.results[r];if(res.isFinal){finalText+=res[0].transcript;alts=[...res].map(a=>a.transcript);got=true;}else interim+=res[0].transcript;}
+    $("live").textContent=(finalText+" "+interim).trim(); };
+  rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed"){$("st").innerHTML="마이크가 막혀 있어요. 주소창 왼쪽 자물쇠 → 권한 → <b>마이크 허용</b>으로 바꿔 주세요.";} else if(e.error==="no-speech"){$("st").textContent="목소리가 안 들렸어요. 🎤를 눌러 다시 말해 보세요.";} else $("st").textContent="인식 오류: "+e.error; };
+  rec.onend=()=>{ listening=false; const m=$("mic"); if(m){m.classList.remove("on");m.textContent="🎤";} if(got) score(finalText,alts); else if($("st") && $("st").textContent.startsWith("🎙")) $("st").textContent="목소리가 안 들렸어요. 🎤를 눌러 다시 말해 보세요."; };
+  try{ rec.start(); }catch(e){}
+}
+function stopListen(){ if(rec){ try{rec.onend=null;rec.abort();}catch(e){} rec=null; } listening=false; const m=$("mic"); if(m){m.classList.remove("on");m.textContent="🎤";} }
+function score(text,alts){
+  const target=S[idx].en, t=norm(target).split(" ");
+  let bestHit=null,bestN=-1,bestTxt=text;
+  for(const a of [text,...alts]){ const g=norm(a).split(" ").filter(Boolean), h=lcs(t,g), n=h.filter(Boolean).length; if(n>bestN){bestN=n;bestHit=h;bestTxt=a;} }
+  const pct=Math.round(bestN/t.length*100), words=target.split(/\s+/);
+  if(words.length===t.length) $("en").innerHTML=words.map((w,k)=>`<span class="${bestHit[k]?"hit":"miss"}">${esc(w)}</span>`).join(" ");
+  const before=best[idx]; if(before!=null && pct>before && gain[idx]==null) gain[idx]=before; best[idx]=before==null?pct:Math.max(before,pct);
+  $("st").textContent=""; $("live").textContent="";
+  $("res").innerHTML=`<div class="res ${pct>=70?"ok":"bad"}"><div class="num ${cls(pct)}">${pct}</div><div class="verdict">${verdict(pct)}</div>
+    <div class="small">들린 대로: "${esc(bestTxt)}"</div>${before!=null?(pct>before?`<div class="small" style="color:var(--ok)">최고 점수 갱신! ${before} → ${pct} 🎉</div>`:`<div class="small">최고 점수 ${before}점은 그대로 남아요</div>`):""}
+    ${pct<70?`<div class="row"><button id="retry1" class="primary">↻ 다시 해 볼게요</button></div>`:""}</div>`;
+  if($("retry1")) $("retry1").onclick=listenAfterSpeak;
+  if(pct>=70 || isLast()){ const my=idx; setTimeout(()=>{ if(idx===my && !listening && $("res") && $("res").innerHTML) goNext(); }, pct>=70?2500:4000); }
+}
+function renderSummary(){
+  stopListen(); const done=S.map((_,i)=>i).filter(i=>best[i]!=null);
+  const avg=done.length?Math.round(done.reduce((a,i)=>a+best[i],0)/done.length):0;
+  const rt=S.map((_,i)=>i).filter(i=>best[i]==null||best[i]<80); const col=avg>=90?"var(--ok)":avg>=70?"var(--accent)":"var(--bad)";
+  $("app").innerHTML=`<div class="top"><span class="brand">쉐도잉 결과</span><span></span></div>
+  <div class="ring" style="background:conic-gradient(${col} 0 ${avg}%,var(--line) ${avg}% 100%)"><span style="color:${col}">${avg}</span></div>
+  <div style="text-align:center;font-size:20px;font-weight:800">${done.length===S.length?"🎉 쉐도잉 완료!":"수고했어요!"}</div>
+  <div class="small" style="text-align:center"><b>${done.length} / ${S.length}</b>문장 · 평균 <b>${avg}점</b></div>
+  <div class="list">${S.map((s,i)=>`<div class="li"><b class="${best[i]==null?"":cls(best[i])}">${best[i]??"-"}</b><span class="s">${esc(s.en)}${gain[i]!=null?`<br><span class="small" style="color:var(--ok)">${gain[i]} → ${best[i]} ↑</span>`:""}</span>${(best[i]==null||best[i]<80)?`<button data-i="${i}">다시</button>`:"👍"}</div>`).join("")}</div>
+  <div class="small" style="text-align:center">${rt.length?`재도전 추천: 80점 미만이거나 안 한 문장 ${rt.length}개`:"모든 문장 80점 이상! 완벽해요"}</div>
+  <div class="nav">${rt.length?`<button class="primary" id="ra">추천 문장 다시 하기</button>`:`<button id="re">처음부터 다시</button>`}<button id="home">처음 화면</button></div>`;
+  document.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{retry=[+b.dataset.i];openCard(+b.dataset.i);});
+  if($("ra")) $("ra").onclick=()=>{retry=rt;openCard(rt[0]);};
+  if($("re")) $("re").onclick=()=>{retry=null;openCard(0);};
+  $("home").onclick=renderStart;
+}
+renderStart();
+</script></body></html>
