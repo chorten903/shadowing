@@ -76,6 +76,15 @@ button:disabled{opacity:.45}
 .sm .li button{padding:5px 12px;font-size:13px}
 .sm .nav{margin-top:0}.sm .nav button{padding:11px 6px}
 .sm .back{padding:11px}
+.qsec{align-self:center;font-size:12px;font-weight:800;letter-spacing:.06em;color:var(--card);background:var(--accent);border-radius:999px;padding:3px 12px}
+.qsec.try{background:var(--sun)}
+.situ{font-size:14px;color:var(--muted);line-height:1.45}
+.qko{font-size:clamp(18px,3.2vh,22px);font-weight:700;line-height:1.4}
+.ctx{display:flex;flex-direction:column;gap:4px;text-align:left;font-size:14px;line-height:1.4}
+.ctx .ab{display:inline-block;min-width:1.6em;font-weight:800;color:var(--accent);margin-right:6px}
+.ctx .cur{background:var(--accent-soft);border-radius:8px;padding:4px 8px;font-weight:700}
+.ctx .dim{opacity:.45}
+.model{font-family:var(--display);font-size:17px;line-height:1.35}
 .warn{background:var(--bad-soft);border-radius:12px;padding:12px;font-size:14px}
 </style></head><body>
 <div class="wrap" id="app"></div>
@@ -85,11 +94,11 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const todayKST=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
 function loadSet(){
-  try{ if(location.hash.length>2){ const d=JSON.parse(decodeURIComponent(location.hash.slice(1))); if(d && Array.isArray(d.s) && d.s.length) return d; } }catch(e){}
+  try{ if(location.hash.length>2){ const d=JSON.parse(decodeURIComponent(location.hash.slice(1))); if(d && ((Array.isArray(d.s) && d.s.length) || (d.mode==="talk" && Array.isArray(d.items) && d.items.length))) return d; } }catch(e){}
   const keys=Object.keys(LESSONS).sort(); const t=todayKST();
   const k=[...keys].reverse().find(x=>x<=t)||keys[0]; return LESSONS[k];
 }
-const SET=loadSet(), S=SET.s;
+const SET=loadSet(), S=SET.s||[];
 const best={}, gain={}; let idx=0, retry=null, rec=null, listening=false;
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const synth=window.speechSynthesis;
@@ -203,5 +212,73 @@ function renderSummary(){ clearAdv(); $("app").classList.remove("cm"); $("app").
   if($("re")) $("re").onclick=()=>{retry=null;openCard(0);};
   $("home").onclick=renderStart; setVH();
 }
-if(location.hash.length>2 && SR){ retry=null; openCard(0); } else renderStart();
+
+/* ---------- 대화 퀴즈 모드 ---------- */
+const TALK = SET.mode==="talk" ? SET : null;
+let qi=0, qbest=[], qadv=null;
+function talkLines(it){ return (TALK.g&&TALK.g[it.g])||[]; }
+function openTalk(i){
+  clearInterval(backT); clearTimeout(qadv); stopListen(); qi=i; const it=TALK.items[i], n=TALK.items.length;
+  $("app").classList.remove("sm"); $("app").classList.add("cm");
+  let body="";
+  if(it.t==="one") body=`<span class="qsec">딱! 한 줄 말하기</span>${it.situ?`<div class="situ">${esc(it.situ)}</div>`:""}<div class="qko">${esc(it.ko)}</div>`;
+  else if(it.t==="try") body=`<span class="qsec try">Try it!</span><div class="situ">오늘의 표현 <b>${esc(it.hint)}</b>을 활용해 보세요.</div><div class="qko">${esc(it.ko)}</div>`;
+  else { const L=talkLines(it); body=`<span class="qsec ${it.t==="ttry"?"try":""}">${it.t==="ttry"?"Try it! 회화":"세 줄 회화"} ${it.idx+1}/${L.length}</span><div class="ctx">${L.map((l,k)=>k<it.idx?`<div><span class="ab">${esc(l.who)}</span>${esc(l.en)}</div>`:k===it.idx?`<div class="cur"><span class="ab">${esc(l.who)}</span>${esc(l.ko)}</div>`:`<div class="dim"><span class="ab">${esc(l.who)}</span>${esc(l.ko)}</div>`).join("")}</div>`; }
+  const right=qbest.filter(x=>x!=null&&x>=70).length;
+  $("app").innerHTML=`<div class="top"><span class="brand">대화 퀴즈 ${i+1} / ${n}${TALK.name?" · "+esc(TALK.name):""}</span><button id="x" style="padding:6px 12px">✕</button></div>
+  <div class="card" id="qcard">${body}<div class="model" id="en" hidden></div></div>
+  <div class="stage"><button class="mic" id="mic" aria-label="말하기">🎤</button>
+  <div class="status" id="st">영어로 말해 보세요</div><div class="live" id="live"></div><div id="res" style="width:100%"></div></div>
+  <div class="nav"><button id="skip">모르겠어요</button><button id="next">${i===n-1?"결과 보기":"다음 ▶"}</button></div>`;
+  $("x").onclick=()=>{stopListen();talkSummary();};
+  $("mic").onclick=()=>{ if(listening) stopListen(); else { clearTimeout(qadv); $("res").innerHTML=""; ["st","live"].forEach(k=>$(k).style.display=""); talkListen(); } };
+  $("skip").onclick=()=>{ stopListen(); talkResult(0,"",true); };
+  $("next").onclick=talkNext;
+  setVH(); setTimeout(()=>{ if(qi===i) talkListen(); },700);
+}
+function talkNext(){ clearTimeout(qadv); if(qi<TALK.items.length-1) openTalk(qi+1); else talkSummary(); }
+function talkListen(){
+  if(!SR) return; if(synth) synth.cancel();
+  rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=false; rec.maxAlternatives=3;
+  let finalText="", alts=[], got=false;
+  rec.onstart=()=>{listening=true;$("mic").classList.add("on");$("mic").textContent="⏹";$("st").textContent="🎙 지금 영어로 말하세요";};
+  rec.onresult=e=>{ let interim="";for(let r=e.resultIndex;r<e.results.length;r++){const res=e.results[r];if(res.isFinal){finalText+=res[0].transcript;alts=[...res].map(a=>a.transcript);got=true;}else interim+=res[0].transcript;} $("live").textContent=(finalText+" "+interim).trim(); };
+  rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed") $("st").innerHTML="마이크가 막혀 있어요. 주소창 왼쪽 자물쇠 → 권한 → <b>마이크 허용</b>"; else if(e.error==="no-speech") $("st").textContent="목소리가 안 들렸어요. 🎤를 눌러 말해 보세요."; else $("st").textContent="인식 오류: "+e.error; };
+  rec.onend=()=>{ listening=false; const m=$("mic"); if(m){m.classList.remove("on");m.textContent="🎤";} if(got){ const it=TALK.items[qi], t=norm(it.en).split(" "); let bn=-1,bt=finalText; for(const a of [finalText,...alts]){ const g=norm(a).split(" ").filter(Boolean), n=lcs(t,g).filter(Boolean).length; if(n>bn){bn=n;bt=a;} } talkResult(Math.round(bn/t.length*100), bt, false); } else if($("st") && $("st").textContent.startsWith("🎙")) $("st").textContent="목소리가 안 들렸어요. 🎤를 눌러 말해 보세요."; };
+  try{ rec.start(); }catch(e){}
+}
+function talkResult(pct, heard, skipped){
+  const it=TALK.items[qi], i=qi; qbest[i]=Math.max(qbest[i]??0,pct);
+  const ok=pct>=70;
+  const en=$("en"); en.hidden=false; en.innerHTML=`정답 · ${esc(it.en)}`;
+  $("st").style.display="none"; $("live").style.display="none"; $("mic").style.display="none";
+  $("res").innerHTML=`<div class="res ${ok?"ok":"bad"}"><div class="num ${cls(pct)}">${skipped?"–":pct}</div><div class="txt"><div class="verdict">${skipped?"🙈 정답을 듣고 따라 해 보세요":ok?(pct>=90?"😎 정답!":"🙂 정답!"):"😅 아쉬워요"}</div>
+    ${heard?`<div class="small">들린 대로: "${esc(heard)}"</div>`:""}
+    <div class="row"><button id="retry1" class="${ok?"":"primary"}">↻ 다시</button></div>
+    <div class="small">3초 뒤 ${i===TALK.items.length-1?"결과로":"다음 문제로"} 넘어가요</div><div class="cnt"><i></i></div></div></div>`;
+  $("retry1").onclick=()=>{ clearTimeout(qadv); if(synth) synth.cancel(); $("res").innerHTML=""; en.hidden=true; ["st","live","mic"].forEach(k=>$(k).style.display=""); fit(); talkListen(); };
+  fit(); clearTimeout(qadv);
+  let armed=false; const arm=()=>{ if(armed) return; armed=true; if(qi===i && $("res") && $("res").innerHTML) qadv=setTimeout(()=>{ if(qi===i && !listening) talkNext(); },3000); };
+  unlocked=true; speak(it.en,0.95,arm); setTimeout(arm, 9000);
+}
+function talkSummary(){
+  clearTimeout(qadv); stopListen(); $("app").classList.remove("cm"); $("app").classList.add("sm");
+  const n=TALK.items.length, right=qbest.filter(x=>x!=null&&x>=70).length, pct=Math.round(right/n*100), col=pct>=90?"var(--ok)":pct>=70?"var(--accent)":"var(--bad)";
+  const back=APP_URL+(TALK.who&&TALK.date?`#talk-${TALK.who}-${TALK.date.replace(/-/g,"")}-${right}-${n}`:"");
+  $("app").innerHTML=`<div class="top"><span class="brand">대화 퀴즈 결과</span><span></span></div>
+  <div class="hero"><div class="ring" style="background:conic-gradient(${col} 0 ${pct}%,var(--line) ${pct}% 100%)"><span style="color:${col};font-size:24px">${right}/${n}</span></div>
+  <div><div style="font-size:19px;font-weight:800">${right===n?"🎉 만점!":"💬 퀴즈 완료!"}</div><div class="small">정답 <b>${right}</b> / ${n}문제${TALK.scored?" · 웹앱에 점수 기록":""}</div></div></div>
+  <div class="list">${TALK.items.map((it,i)=>`<div class="li"><b class="${qbest[i]==null?"":cls(qbest[i])}">${qbest[i]==null?"-":qbest[i]>=70?"○":"✕"}</b><span class="s">${esc(it.en)}</span>${qbest[i]!=null&&qbest[i]>=70?"👍":`<button data-q="${i}">다시</button>`}</div>`).join("")}</div>
+  <div class="nav" style="grid-template-columns:1fr"><button id="qa">처음부터 다시</button></div>
+  <a class="back" id="back" href="${back}">↩ 웹앱으로 돌아가기 <small id="cd">3초 뒤 자동으로 돌아가요</small></a>`;
+  const go=()=>{ clearInterval(backT); location.href=back; };
+  clearInterval(backT); let c=3; backT=setInterval(()=>{ c--; const el=$("cd"); if(!el){clearInterval(backT);return;} if(c<=0) go(); else el.textContent=c+"초 뒤 자동으로 돌아가요"; },1000);
+  $("back").onclick=e=>{e.preventDefault();go();};
+  $("qa").onclick=()=>{ qbest=[]; openTalk(0); };
+  document.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>openTalk(+b.dataset.q));
+  setVH();
+}
+
+if(TALK){ if(SR) openTalk(0); else { $("app").innerHTML=`<div class="warn">이 브라우저는 음성 인식을 지원하지 않아요. 크롬(Chrome)으로 열어 주세요.</div>`; } }
+else if(location.hash.length>2 && SR){ retry=null; openCard(0); } else renderStart();
 </script></body></html>
