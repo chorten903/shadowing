@@ -94,11 +94,12 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const todayKST=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
 function loadSet(){
-  try{ if(location.hash.length>2){ const d=JSON.parse(decodeURIComponent(location.hash.slice(1))); if(d && ((Array.isArray(d.s) && d.s.length) || (d.mode==="talk" && Array.isArray(d.items) && d.items.length))) return d; } }catch(e){}
+  try{ if(location.hash.length>2){ const d=JSON.parse(decodeURIComponent(location.hash.slice(1))); if(d && d.mode==="words" && Array.isArray(d.w) && d.w.length){ const n=d.rep||3; d.s=[]; d.w.forEach((w,wi)=>{ for(let k=1;k<=n;k++) d.s.push({en:w.en, ko:w.ko, tip:`🔁 ${k} / ${n}번째${w.teps?" · TEPS":""}`, wi, k}); }); return d; }
+      if(d && ((Array.isArray(d.s) && d.s.length) || (d.mode==="talk" && Array.isArray(d.items) && d.items.length))) return d; } }catch(e){}
   const keys=Object.keys(LESSONS).sort(); const t=todayKST();
   const k=[...keys].reverse().find(x=>x<=t)||keys[0]; return LESSONS[k];
 }
-const SET=loadSet(), S=SET.s||[];
+const SET=loadSet(), S=SET.s||[], WORDS=SET.mode==="words";
 const best={}, gain={}; let idx=0, retry=null, rec=null, listening=false;
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const synth=window.speechSynthesis;
@@ -144,7 +145,7 @@ window.addEventListener("resize",setVH); if(window.visualViewport) visualViewpor
 function clearAdv(){ clearTimeout(advT); advT=null; }
 function openCard(i){
   clearInterval(backT); clearAdv(); stopListen(); idx=i; $("app").classList.remove("sm"); $("app").classList.add("cm"); const s=S[i], o=order(), k=o.indexOf(i);
-  $("app").innerHTML=`<div class="top"><span class="brand">쉐도잉 ${k+1} / ${o.length}</span><button id="x" style="padding:6px 12px">✕</button></div>
+  $("app").innerHTML=`<div class="top"><span class="brand">${WORDS?`단어 쉐도잉 ${(S[i].wi||0)+1} / ${SET.w.length}`:`쉐도잉 ${k+1} / ${o.length}`}</span><button id="x" style="padding:6px 12px">✕</button></div>
   <div class="card"><div class="en" id="en">${esc(s.en)}</div><div class="ko">${esc(s.ko)}</div>${s.tip?`<div class="tip">${esc(s.tip)}</div>`:""}
     <div class="row"><button id="again">↻ 듣고 다시 말하기</button><button id="slow">🐢 천천히</button></div></div>
   <div class="stage"><button class="mic" id="mic" aria-label="말하기">🎤</button>
@@ -161,7 +162,7 @@ function openCard(i){
 }
 function goNext(){const o=order(),k=o.indexOf(idx);if(k<o.length-1)openCard(o[k+1]);else{retry=null;renderSummary();}}
 function listenAfterSpeak(){ clearAdv(); stopListen(); ["st","live","mic"].forEach(k=>$(k).style.display=""); $("st").textContent="🔊 잘 들어 보세요"; fit(); $("live").textContent=""; $("res").innerHTML=""; $("en").innerHTML=esc(S[idx].en);
-  const my=idx; speak(S[idx].en,0.95,()=>{ if(idx===my) startListen(); }); }
+  const my=idx; speak(S[idx].en,WORDS?0.85:0.95,()=>{ if(idx===my) startListen(); }); }
 function startListen(){
   if(!SR) return; if(synth) synth.cancel();
   rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=false; rec.maxAlternatives=3;
@@ -188,7 +189,7 @@ function score(text,alts){
     <div class="small">${pct>=70?"3초 뒤":"🔊 원문을 한 번 듣고"} ${isLast()?"결과로":"다음 문장으로"} 넘어가요</div>${pct>=70?`<div class="cnt"><i></i></div>`:""}</div></div>`;
   $("retry1").onclick=listenAfterSpeak;
   fit(); clearAdv(); const my=idx;
-  if(pct>=70) advT=setTimeout(()=>{ if(idx===my && !listening) goNext(); }, 3000);
+  if(pct>=70) advT=setTimeout(()=>{ if(idx===my && !listening) goNext(); }, WORDS?1500:3000);
   else { let gone=false; const nx=()=>{ if(gone) return; gone=true; clearAdv(); advT=setTimeout(()=>{ if(idx===my && !listening && $("res") && $("res").innerHTML) goNext(); },2000); };
     unlocked=true; speak(S[idx].en,0.9,nx); advT=setTimeout(nx,9000); }
 }
@@ -200,16 +201,18 @@ function renderSummary(){ clearAdv(); $("app").classList.remove("cm"); $("app").
   stopListen(); const done=S.map((_,i)=>i).filter(i=>best[i]!=null);
   const avg=done.length?Math.round(done.reduce((a,i)=>a+best[i],0)/done.length):0;
   const rt=S.map((_,i)=>i).filter(i=>best[i]==null||best[i]<80); const col=avg>=90?"var(--ok)":avg>=70?"var(--accent)":"var(--bad)";
-  $("app").innerHTML=`<div class="top"><span class="brand">쉐도잉 결과</span><span></span></div>
+  $("app").innerHTML=`<div class="top"><span class="brand">${WORDS?"단어 쉐도잉 결과":"쉐도잉 결과"}</span><span></span></div>
   <div class="hero"><div class="ring" style="background:conic-gradient(${col} 0 ${avg}%,var(--line) ${avg}% 100%)"><span style="color:${col}">${avg}</span></div>
   <div><div style="font-size:19px;font-weight:800">${done.length===S.length?"🎉 쉐도잉 완료!":"수고했어요!"}</div>
-  <div class="small"><b>${done.length} / ${S.length}</b>문장 · 평균 <b>${avg}점</b></div></div></div>
-  <div class="list">${S.map((s,i)=>`<div class="li"><b class="${best[i]==null?"":cls(best[i])}">${best[i]??"-"}</b><span class="s">${esc(s.en)}${gain[i]!=null?`<br><span class="small" style="color:var(--ok)">${gain[i]} → ${best[i]} ↑</span>`:""}</span>${(best[i]==null||best[i]<80)?`<button data-i="${i}">다시</button>`:"👍"}</div>`).join("")}</div>
+  <div class="small">${WORDS?`<b>${SET.w.length}</b>단어 × 3번`:`<b>${done.length} / ${S.length}</b>문장`} · 평균 <b>${avg}점</b></div></div></div>
+  <div class="list">${WORDS ? SET.w.map((w,wi)=>{ const ix=S.map((x,i)=>x.wi===wi?i:-1).filter(i=>i>=0), sc=ix.map(i=>best[i]), got=sc.filter(x=>x!=null), av=got.length?Math.round(got.reduce((a,b)=>a+b,0)/got.length):null;
+    return `<div class="li"><b class="${av==null?"":cls(av)}">${av??"-"}</b><span class="s">${esc(w.en)}<br><span class="small">${sc.map(x=>x??"-").join(" · ")}</span></span>${(av==null||av<80)?`<button data-w="${wi}">다시</button>`:"👍"}</div>`; }).join("") : S.map((s,i)=>`<div class="li"><b class="${best[i]==null?"":cls(best[i])}">${best[i]??"-"}</b><span class="s">${esc(s.en)}${gain[i]!=null?`<br><span class="small" style="color:var(--ok)">${gain[i]} → ${best[i]} ↑</span>`:""}</span>${(best[i]==null||best[i]<80)?`<button data-i="${i}">다시</button>`:"👍"}</div>`).join("")}</div>
   ${rt.length?"":`<div class="small" style="text-align:center">모든 문장 80점 이상! 완벽해요</div>`}
   <div class="nav">${rt.length?`<button class="primary" id="ra">80점 미만 ${rt.length}개 다시</button>`:`<button id="re">처음부터 다시</button>`}<button id="home">처음 화면</button></div>
   <a class="back" id="back" href="${APP_URL}">↩ 웹앱으로 돌아가기 <small id="cd">3초 뒤 자동으로 돌아가요</small></a>`;
   clearInterval(backT); let c=3; backT=setInterval(()=>{ c--; const el=$("cd"); if(!el){clearInterval(backT);return;} if(c<=0){ clearInterval(backT); goBack(); } else el.textContent=c+"초 뒤 자동으로 돌아가요"; },1000);
   $("back").onclick=e=>{ e.preventDefault(); clearInterval(backT); goBack(); };
+  document.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{ const ix=S.map((x,i)=>x.wi===+b.dataset.w?i:-1).filter(i=>i>=0); retry=ix; openCard(ix[0]); });
   document.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{retry=[+b.dataset.i];openCard(+b.dataset.i);});
   if($("ra")) $("ra").onclick=()=>{retry=rt;openCard(rt[0]);};
   if($("re")) $("re").onclick=()=>{retry=null;openCard(0);};
