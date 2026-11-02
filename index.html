@@ -185,9 +185,12 @@ function score(text,alts){
   $("res").innerHTML=`<div class="res ${pct>=70?"ok":"bad"}"><div class="num ${cls(pct)}">${pct}</div><div class="txt"><div class="verdict">${verdict(pct)}</div>
     <div class="small">들린 대로: "${esc(bestTxt)}"</div>${before!=null?(pct>before?`<div class="small" style="color:var(--ok)">최고 점수 갱신! ${before} → ${pct} 🎉</div>`:`<div class="small">최고 ${before}점은 그대로</div>`):""}
     <div class="row"><button id="retry1" class="${pct<70?"primary":""}">↻ 다시</button></div>
-    <div class="small">3초 뒤 ${isLast()?"결과로":"다음 문장으로"} 넘어가요</div><div class="cnt"><i></i></div></div></div>`;
+    <div class="small">${pct>=70?"3초 뒤":"🔊 원문을 한 번 듣고"} ${isLast()?"결과로":"다음 문장으로"} 넘어가요</div>${pct>=70?`<div class="cnt"><i></i></div>`:""}</div></div>`;
   $("retry1").onclick=listenAfterSpeak;
-  fit(); clearAdv(); const my=idx; advT=setTimeout(()=>{ if(idx===my && !listening) goNext(); }, 3000);
+  fit(); clearAdv(); const my=idx;
+  if(pct>=70) advT=setTimeout(()=>{ if(idx===my && !listening) goNext(); }, 3000);
+  else { let gone=false; const nx=()=>{ if(gone) return; gone=true; clearAdv(); advT=setTimeout(()=>{ if(idx===my && !listening && $("res") && $("res").innerHTML) goNext(); },1200); };
+    unlocked=true; speak(S[idx].en,0.9,nx); advT=setTimeout(nx,9000); }
 }
 const APP_URL="https://claude.ai/artifact/81i7VdtutQ1RFNG7ErNrKf";
 let backT=null;
@@ -255,11 +258,11 @@ function talkResult(pct, heard, skipped){
   $("res").innerHTML=`<div class="res ${ok?"ok":"bad"}"><div class="num ${cls(pct)}">${skipped?"–":pct}</div><div class="txt"><div class="verdict">${skipped?"🙈 정답을 듣고 따라 해 보세요":ok?(pct>=90?"😎 정답!":"🙂 정답!"):"😅 아쉬워요"}</div>
     ${heard?`<div class="small">들린 대로: "${esc(heard)}"</div>`:""}
     <div class="row"><button id="retry1" class="${ok?"":"primary"}">↻ 다시</button></div>
-    <div class="small">3초 뒤 ${i===TALK.items.length-1?"결과로":"다음 문제로"} 넘어가요</div><div class="cnt"><i></i></div></div></div>`;
+    <div class="small">${ok?"3초 뒤":"🔊 정답을 듣고"} ${i===TALK.items.length-1?"결과로":"다음 문제로"} 넘어가요</div>${ok?`<div class="cnt"><i></i></div>`:""}</div></div>`;
   $("retry1").onclick=()=>{ clearTimeout(qadv); if(synth) synth.cancel(); $("res").innerHTML=""; en.hidden=true; ["st","live","mic"].forEach(k=>$(k).style.display=""); fit(); talkListen(); };
   fit(); clearTimeout(qadv);
-  let armed=false; const arm=()=>{ if(armed) return; armed=true; if(qi===i && $("res") && $("res").innerHTML) qadv=setTimeout(()=>{ if(qi===i && !listening) talkNext(); },3000); };
-  unlocked=true; speak(it.en,0.95,arm); setTimeout(arm, 9000);
+  let armed=false; const arm=()=>{ if(armed) return; armed=true; if(qi===i && $("res") && $("res").innerHTML) qadv=setTimeout(()=>{ if(qi===i && !listening) talkNext(); },ok?3000:1200); };
+  if(ok) arm(); else { unlocked=true; speak(it.en,0.9,arm); setTimeout(arm, 9000); }
 }
 function talkSummary(){
   clearTimeout(qadv); stopListen(); $("app").classList.remove("cm"); $("app").classList.add("sm");
