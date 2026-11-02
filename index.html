@@ -189,7 +189,7 @@ function score(text,alts){
   $("retry1").onclick=listenAfterSpeak;
   fit(); clearAdv(); const my=idx;
   if(pct>=70) advT=setTimeout(()=>{ if(idx===my && !listening) goNext(); }, 3000);
-  else { let gone=false; const nx=()=>{ if(gone) return; gone=true; clearAdv(); advT=setTimeout(()=>{ if(idx===my && !listening && $("res") && $("res").innerHTML) goNext(); },1200); };
+  else { let gone=false; const nx=()=>{ if(gone) return; gone=true; clearAdv(); advT=setTimeout(()=>{ if(idx===my && !listening && $("res") && $("res").innerHTML) goNext(); },2000); };
     unlocked=true; speak(S[idx].en,0.9,nx); advT=setTimeout(nx,9000); }
 }
 const APP_URL="https://claude.ai/artifact/81i7VdtutQ1RFNG7ErNrKf";
@@ -261,7 +261,7 @@ function talkResult(pct, heard, skipped){
     <div class="small">${ok?"3초 뒤":"🔊 정답을 듣고"} ${i===TALK.items.length-1?"결과로":"다음 문제로"} 넘어가요</div>${ok?`<div class="cnt"><i></i></div>`:""}</div></div>`;
   $("retry1").onclick=()=>{ clearTimeout(qadv); if(synth) synth.cancel(); $("res").innerHTML=""; en.hidden=true; ["st","live","mic"].forEach(k=>$(k).style.display=""); fit(); talkListen(); };
   fit(); clearTimeout(qadv);
-  let armed=false; const arm=()=>{ if(armed) return; armed=true; if(qi===i && $("res") && $("res").innerHTML) qadv=setTimeout(()=>{ if(qi===i && !listening) talkNext(); },ok?3000:1200); };
+  let armed=false; const arm=()=>{ if(armed) return; armed=true; if(qi===i && $("res") && $("res").innerHTML) qadv=setTimeout(()=>{ if(qi===i && !listening) talkNext(); },ok?3000:2000); };
   if(ok) arm(); else { unlocked=true; speak(it.en,0.9,arm); setTimeout(arm, 9000); }
 }
 function talkSummary(){
