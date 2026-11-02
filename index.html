@@ -188,9 +188,8 @@ function renderSummary(){ clearAdv(); $("app").classList.remove("cm"); $("app").
   <div class="list">${S.map((s,i)=>`<div class="li"><b class="${best[i]==null?"":cls(best[i])}">${best[i]??"-"}</b><span class="s">${esc(s.en)}${gain[i]!=null?`<br><span class="small" style="color:var(--ok)">${gain[i]} → ${best[i]} ↑</span>`:""}</span>${(best[i]==null||best[i]<80)?`<button data-i="${i}">다시</button>`:"👍"}</div>`).join("")}</div>
   ${rt.length?"":`<div class="small" style="text-align:center">모든 문장 80점 이상! 완벽해요</div>`}
   <div class="nav">${rt.length?`<button class="primary" id="ra">80점 미만 ${rt.length}개 다시</button>`:`<button id="re">처음부터 다시</button>`}<button id="home">처음 화면</button></div>
-  <a class="back" id="back" href="${APP_URL}">↩ 웹앱으로 돌아가기 <small id="cd">5초 뒤 자동 이동 · 화면을 누르면 취소</small></a>`;
-  clearInterval(backT); let c=5; backT=setInterval(()=>{ c--; const el=$("cd"); if(!el){clearInterval(backT);return;} if(c<=0){ clearInterval(backT); goBack(); } else el.textContent=c+"초 뒤 자동 이동 · 화면을 누르면 취소"; },1000);
-  setTimeout(()=>document.addEventListener("pointerdown",cancelBack,{once:true}),300);
+  <a class="back" id="back" href="${APP_URL}">↩ 웹앱으로 돌아가기 <small id="cd">3초 뒤 자동으로 돌아가요</small></a>`;
+  clearInterval(backT); let c=3; backT=setInterval(()=>{ c--; const el=$("cd"); if(!el){clearInterval(backT);return;} if(c<=0){ clearInterval(backT); goBack(); } else el.textContent=c+"초 뒤 자동으로 돌아가요"; },1000);
   $("back").onclick=e=>{ e.preventDefault(); clearInterval(backT); goBack(); };
   document.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{retry=[+b.dataset.i];openCard(+b.dataset.i);});
   if($("ra")) $("ra").onclick=()=>{retry=rt;openCard(rt[0]);};
