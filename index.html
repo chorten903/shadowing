@@ -48,14 +48,14 @@ button:disabled{opacity:.45}
 .li b{font-family:var(--display);font-size:22px;min-width:2.2em;text-align:center}
 .back{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px;border-radius:14px;background:var(--fg);color:var(--card);text-decoration:none;font-weight:700;font-size:16px}
 .back small{font-weight:400;font-size:12px;opacity:.8}
-.wrap.cm{height:100vh;height:100dvh;gap:10px;padding-bottom:max(12px,env(safe-area-inset-bottom));overflow:hidden}
+.wrap.cm{height:100vh;height:var(--vh,100dvh);gap:10px;padding-bottom:max(12px,env(safe-area-inset-bottom));overflow:hidden}
 .cm .card{padding:clamp(14px,2.6vh,26px) 16px;gap:clamp(6px,1.2vh,12px);flex:none}
-.cm .en{font-size:clamp(21px,3.9vh,30px)}
+.cm .en{font-size:clamp(20px,3.6vh,28px);line-height:1.25}
 .cm .ko{font-size:clamp(14px,2vh,16px);line-height:1.4}
 .cm .tip{padding:6px 10px;line-height:1.4}
 .cm .row button{padding:7px 14px;font-size:14px}
 .stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
-.cm .mic{width:clamp(68px,11vh,104px);height:clamp(68px,11vh,104px);font-size:clamp(28px,4.4vh,42px);flex:none}
+.cm .mic{width:clamp(60px,10vh,96px);height:clamp(60px,10vh,96px);font-size:clamp(28px,4.4vh,42px);flex:none}
 .cm .res{flex-direction:row;align-items:center;gap:14px;padding:10px 14px;width:100%;text-align:left}
 .cm .res .num{font-size:clamp(38px,6vh,52px);flex:none}
 .cm .res .txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
@@ -106,6 +106,13 @@ function renderStart(){ $("app").classList.remove("cm");
   $("go").onclick=()=>{retry=null;openCard(0);};
 }
 let advT=null;
+function setVH(){ const h=(window.visualViewport&&window.visualViewport.height)||window.innerHeight; document.documentElement.style.setProperty("--vh",Math.round(h)+"px"); fit(); }
+function fit(){ const w=$("app"); if(!w.classList.contains("cm")) return; const en=$("en"), ko=w.querySelector(".ko"); if(!en) return;
+  en.style.fontSize=""; if(ko) ko.style.fontSize="";
+  let f=parseFloat(getComputedStyle(en).fontSize), g=ko?parseFloat(getComputedStyle(ko).fontSize):14;
+  const over=()=>w.scrollHeight>w.clientHeight+1;
+  let n=0; while(over() && n++<40){ if(f>17){f-=1;en.style.fontSize=f+"px";} if(g>12 && n%3===0){g-=1; if(ko) ko.style.fontSize=g+"px";} if(f<=17&&g<=12) break; } }
+window.addEventListener("resize",setVH); if(window.visualViewport) visualViewport.addEventListener("resize",setVH);
 function clearAdv(){ clearTimeout(advT); advT=null; }
 function openCard(i){
   clearInterval(backT); clearAdv(); stopListen(); idx=i; $("app").classList.add("cm"); const s=S[i], o=order(), k=o.indexOf(i);
@@ -121,10 +128,11 @@ function openCard(i){
   $("mic").onclick=()=>{ if(listening) stopListen(); else { clearAdv(); $("res").innerHTML=""; ["st","live"].forEach(k=>$(k).style.display=""); startListen(); } };
   $("prev").onclick=()=>{const o=order(),k=o.indexOf(idx);if(k>0)openCard(o[k-1]);};
   $("next").onclick=goNext;
+  setVH();
   listenAfterSpeak();
 }
 function goNext(){const o=order(),k=o.indexOf(idx);if(k<o.length-1)openCard(o[k+1]);else{retry=null;renderSummary();}}
-function listenAfterSpeak(){ clearAdv(); stopListen(); ["st","live","mic"].forEach(k=>$(k).style.display=""); $("st").textContent="🔊 잘 들어 보세요"; $("live").textContent=""; $("res").innerHTML=""; $("en").innerHTML=esc(S[idx].en);
+function listenAfterSpeak(){ clearAdv(); stopListen(); ["st","live","mic"].forEach(k=>$(k).style.display=""); $("st").textContent="🔊 잘 들어 보세요"; fit(); $("live").textContent=""; $("res").innerHTML=""; $("en").innerHTML=esc(S[idx].en);
   const my=idx; speak(S[idx].en,0.95,()=>{ if(idx===my) startListen(); }); }
 function startListen(){
   if(!SR) return; if(synth) synth.cancel();
@@ -151,7 +159,7 @@ function score(text,alts){
     <div class="row"><button id="retry1" class="${pct<70?"primary":""}">↻ 다시</button></div>
     <div class="small">3초 뒤 ${isLast()?"결과로":"다음 문장으로"} 넘어가요</div><div class="cnt"><i></i></div></div></div>`;
   $("retry1").onclick=listenAfterSpeak;
-  clearAdv(); const my=idx; advT=setTimeout(()=>{ if(idx===my && !listening) goNext(); }, 3000);
+  fit(); clearAdv(); const my=idx; advT=setTimeout(()=>{ if(idx===my && !listening) goNext(); }, 3000);
 }
 const APP_URL="https://claude.ai/artifact/81i7VdtutQ1RFNG7ErNrKf";
 let backT=null;
