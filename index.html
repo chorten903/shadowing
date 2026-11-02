@@ -108,7 +108,10 @@ function pickVoice(){ const vs=(synth?synth.getVoices():[]).filter(v=>/^en/i.tes
   const sc=v=>{const n=v.name.toLowerCase();let s=0;if(/natural|neural|enhanced|premium|online/.test(n))s+=6;if(/google/.test(n))s+=4;if(v.localService===false)s+=2;if(/en[-_]us/i.test(v.lang))s+=2;return s};
   voice=vs.sort((a,b)=>sc(b)-sc(a))[0]||null; }
 if(synth){ pickVoice(); synth.onvoiceschanged=pickVoice; }
-let unlocked=false;
+let unlocked=false, silent=0, silentT=null;
+function silentRetry(fn){ const st=$("st"); if(!st) return; clearTimeout(silentT);
+  if(silent<3){ silent++; st.textContent=`🙉 목소리가 안 들렸어요. 다시 말해 주세요 (${silent}/3)`; const at=$("mic"); silentT=setTimeout(()=>{ if($("mic")===at && !listening) fn(); },2000); }
+  else { silent=0; st.textContent="목소리가 계속 안 들려요. 🎤를 눌러 다시 말해 보세요."; } }
 function needTap(){ const st=$("st"); if(!st) return; stopListen(); st.innerHTML=`<button class="primary" id="tapgo" style="font-size:17px;padding:12px 22px">▶ 눌러서 시작</button>`; $("tapgo").onclick=()=>{unlocked=true;listenAfterSpeak();}; }
 function speak(text,rate,cb){ if(!synth){cb&&cb();return;} synth.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="en-US"; u.rate=rate||0.95; if(voice) u.voice=voice;
   let started=false, done=false; const fin=()=>{ if(done) return; done=true; cb&&cb(); };
@@ -161,20 +164,20 @@ function openCard(i){ tries[i]=0;
   listenAfterSpeak();
 }
 function goNext(){const o=order(),k=o.indexOf(idx);if(k<o.length-1)openCard(o[k+1]);else{retry=null;renderSummary();}}
-function listenAfterSpeak(){ clearAdv(); stopListen(); ["st","live","mic"].forEach(k=>$(k).style.display=""); $("st").textContent="🔊 잘 들어 보세요"; fit(); $("live").textContent=""; $("res").innerHTML=""; $("en").innerHTML=esc(S[idx].en);
+function listenAfterSpeak(){ clearTimeout(silentT); silent=0; clearAdv(); stopListen(); ["st","live","mic"].forEach(k=>$(k).style.display=""); $("st").textContent="🔊 잘 들어 보세요"; fit(); $("live").textContent=""; $("res").innerHTML=""; $("en").innerHTML=esc(S[idx].en);
   const my=idx; speak(S[idx].en,WORDS?0.85:0.95,()=>{ if(idx===my) startListen(); }); }
 function startListen(){
   if(!SR) return; if(synth) synth.cancel();
   rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=false; rec.maxAlternatives=3;
   let finalText="", alts=[], got=false;
   rec.onstart=()=>{listening=true;$("mic").classList.add("on");$("mic").textContent="⏹";$("st").textContent="🎙 지금 말하세요";};
-  rec.onresult=e=>{ let interim="";for(let r=e.resultIndex;r<e.results.length;r++){const res=e.results[r];if(res.isFinal){finalText+=res[0].transcript;alts=[...res].map(a=>a.transcript);got=true;}else interim+=res[0].transcript;}
+  rec.onresult=e=>{ silent=0; let interim="";for(let r=e.resultIndex;r<e.results.length;r++){const res=e.results[r];if(res.isFinal){finalText+=res[0].transcript;alts=[...res].map(a=>a.transcript);got=true;}else interim+=res[0].transcript;}
     $("live").textContent=(finalText+" "+interim).trim(); };
-  rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed"){$("st").innerHTML="마이크가 막혀 있어요. 주소창 왼쪽 자물쇠 → 권한 → <b>마이크 허용</b>으로 바꿔 주세요.";} else if(e.error==="no-speech"){$("st").textContent="목소리가 안 들렸어요. 🎤를 눌러 다시 말해 보세요.";} else $("st").textContent="인식 오류: "+e.error; };
-  rec.onend=()=>{ listening=false; const m=$("mic"); if(m){m.classList.remove("on");m.textContent="🎤";} if(got) score(finalText,alts); else if($("st") && $("st").textContent.startsWith("🎙")) $("st").textContent="목소리가 안 들렸어요. 🎤를 눌러 다시 말해 보세요."; };
+  rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed"){$("st").innerHTML="마이크가 막혀 있어요. 주소창 왼쪽 자물쇠 → 권한 → <b>마이크 허용</b>으로 바꿔 주세요.";} else if(e.error==="no-speech"){} else $("st").textContent="인식 오류: "+e.error; };
+  rec.onend=()=>{ listening=false; const m=$("mic"); if(m){m.classList.remove("on");m.textContent="🎤";} if(got) score(finalText,alts); else if($("st") && $("st").textContent.startsWith("🎙")) silentRetry(startListen); };
   try{ rec.start(); }catch(e){}
 }
-function stopListen(){ if(rec){ try{rec.onend=null;rec.abort();}catch(e){} rec=null; } listening=false; const m=$("mic"); if(m){m.classList.remove("on");m.textContent="🎤";} }
+function stopListen(){ clearTimeout(silentT); if(rec){ try{rec.onend=null;rec.abort();}catch(e){} rec=null; } listening=false; const m=$("mic"); if(m){m.classList.remove("on");m.textContent="🎤";} }
 function score(text,alts){
   const target=S[idx].en, t=norm(target).split(" ");
   let bestHit=null,bestN=-1,bestTxt=text;
@@ -224,7 +227,7 @@ function renderSummary(){ clearAdv(); $("app").classList.remove("cm"); $("app").
 const TALK = SET.mode==="talk" ? SET : null;
 let qi=0, qbest=[], qadv=null;
 function talkLines(it){ return (TALK.g&&TALK.g[it.g])||[]; }
-function openTalk(i){
+function openTalk(i){ clearTimeout(silentT); silent=0;
   clearInterval(backT); clearTimeout(qadv); stopListen(); qi=i; const it=TALK.items[i], n=TALK.items.length;
   $("app").classList.remove("sm"); $("app").classList.add("cm");
   let body="";
@@ -249,9 +252,9 @@ function talkListen(){
   rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=false; rec.maxAlternatives=3;
   let finalText="", alts=[], got=false;
   rec.onstart=()=>{listening=true;$("mic").classList.add("on");$("mic").textContent="⏹";$("st").textContent="🎙 지금 영어로 말하세요";};
-  rec.onresult=e=>{ let interim="";for(let r=e.resultIndex;r<e.results.length;r++){const res=e.results[r];if(res.isFinal){finalText+=res[0].transcript;alts=[...res].map(a=>a.transcript);got=true;}else interim+=res[0].transcript;} $("live").textContent=(finalText+" "+interim).trim(); };
-  rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed") $("st").innerHTML="마이크가 막혀 있어요. 주소창 왼쪽 자물쇠 → 권한 → <b>마이크 허용</b>"; else if(e.error==="no-speech") $("st").textContent="목소리가 안 들렸어요. 🎤를 눌러 말해 보세요."; else $("st").textContent="인식 오류: "+e.error; };
-  rec.onend=()=>{ listening=false; const m=$("mic"); if(m){m.classList.remove("on");m.textContent="🎤";} if(got){ const it=TALK.items[qi], t=norm(it.en).split(" "); let bn=-1,bt=finalText; for(const a of [finalText,...alts]){ const g=norm(a).split(" ").filter(Boolean), n=lcs(t,g).filter(Boolean).length; if(n>bn){bn=n;bt=a;} } talkResult(Math.round(bn/t.length*100), bt, false); } else if($("st") && $("st").textContent.startsWith("🎙")) $("st").textContent="목소리가 안 들렸어요. 🎤를 눌러 말해 보세요."; };
+  rec.onresult=e=>{ silent=0; let interim="";for(let r=e.resultIndex;r<e.results.length;r++){const res=e.results[r];if(res.isFinal){finalText+=res[0].transcript;alts=[...res].map(a=>a.transcript);got=true;}else interim+=res[0].transcript;} $("live").textContent=(finalText+" "+interim).trim(); };
+  rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed") $("st").innerHTML="마이크가 막혀 있어요. 주소창 왼쪽 자물쇠 → 권한 → <b>마이크 허용</b>"; else if(e.error==="no-speech"){} else $("st").textContent="인식 오류: "+e.error; };
+  rec.onend=()=>{ listening=false; const m=$("mic"); if(m){m.classList.remove("on");m.textContent="🎤";} if(got){ const it=TALK.items[qi], t=norm(it.en).split(" "); let bn=-1,bt=finalText; for(const a of [finalText,...alts]){ const g=norm(a).split(" ").filter(Boolean), n=lcs(t,g).filter(Boolean).length; if(n>bn){bn=n;bt=a;} } talkResult(Math.round(bn/t.length*100), bt, false); } else if($("st") && $("st").textContent.startsWith("🎙")) silentRetry(talkListen); };
   try{ rec.start(); }catch(e){}
 }
 function talkResult(pct, heard, skipped){
